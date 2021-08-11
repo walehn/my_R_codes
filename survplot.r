@@ -1,3 +1,5 @@
+rm(list=ls())
+
 library(survival)
 library(survminer)
 library(dplyr)
