@@ -43,3 +43,4 @@ ggplot(vincent,aes(x = Case, y = Dice, color = Case, fill = Case, label= round(D
   theme(axis.text.x = element_text(size=15),
         axis.text.y = element_text(size =15)) +
   ylim(0L, 1L)
+
