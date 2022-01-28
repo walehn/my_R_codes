@@ -1,7 +1,9 @@
+rm(list=ls())
 require(moonBook)
 library(Boruta)
 library(lme4)
 library(pROC)
+library(caret)
 
 data <- read.csv("LMS_data_r.csv")
 table <- mytable(malignancy~., data = data, show.all=TRUE)
@@ -58,6 +60,38 @@ data2$feature_sum = rowSums(data2[,c(1,2,4,6)])
 feature_roc <- roc(malignancy~feature_sum,data=data2)
 plot.roc(feature_roc, col="red", print.auc=TRUE, print.auc.adj=c(1.11,1.2),
          print.thres=c(1,2,3,4), print.thres.adj=c(0.3,-1.0), legacy.axes = TRUE)
+
+logistic_qual = glm(malignancy~feature_sum, data=data2, family = binomial())
+summary(logistic_qual)
+
+
+Log_odds=predict(logistic_qual, newdata= data2)
+Prob = predict(logistic_qual, newdata= data2, type='response')
+
+
+PREDICTED_C = ifelse(Prob > 0.5 , 1 , 0)
+PREDICTED_C = factor(PREDICTED_C,levels = c(1,0))
+data2$malignancy = factor(data2$malignancy, levels = c(1,0))
+confusionMatrix(PREDICTED_C,data2$malignancy)
+ROC = roc(data2$malignancy, Prob)
+plot.roc(ROC, col="red", print.auc=TRUE, print.auc.adj=c(1.11,1.2),
+         print.thres=TRUE, print.thres.adj=c(0.3,-1.0), legacy.axes = TRUE)
+
+
+logistic_qual2 = glm(malignancy~shape_R1+margin_R1+T2dark_R1+ADC_R1, data=data2, family = binomial())
+summary(logistic_qual2)
+
+Log_odds2=predict(logistic_qual2, newdata= data2)
+Prob2 = predict(logistic_qual2, newdata= data2, type='response')
+
+PREDICTED_2 = ifelse(Prob2 > 0.424 , 1 , 0)
+PREDICTED_2 = factor(PREDICTED_2,levels = c(1,0))
+data2$malignancy = factor(data2$malignancy, levels = c(1,0))
+confusionMatrix(PREDICTED_2,data2$malignancy)
+
+ROC2 = roc(data2$malignancy, Prob2)
+plot.roc(ROC2, col="red", print.auc=TRUE, print.auc.adj=c(1.11,1.2),
+         print.thres=TRUE, print.thres.adj=c(0.3,-1.0), legacy.axes = TRUE)
 
 require(Epi)
 require(ztable)
