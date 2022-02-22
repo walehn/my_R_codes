@@ -1,0 +1,286 @@
+---
+title: "LMS results"
+output: word_document
+---
+
+```{r warning=FALSE, message=FALSE, echo=FALSE}
+rm(list=ls())
+require(moonBook)
+library(lme4)
+library(pROC)
+library(caret)
+data <- read.csv("LMS_data_r.csv")
+```
+
+
+# 1. result for R2
+
+
+```{r message=TRUE, echo=FALSE}
+ResVar = "malignancy"
+Model = as.formula(paste(ResVar, "~shape_R2+margin_R2+hemorrhage_R2+T2dark_R2+
+                     necrosis_R2+ADC_R2+RCR_R2"))
+```
+
+
+## 1-1. cross table analysis
+
+
+```{r, echo=FALSE}
+table <- mytable(Model,data=data, show.total=TRUE)
+table
+```
+
+
+## 1-2. logistic regression model with OR calculation for qualitative features
+
+
+```{r, echo=FALSE}
+ORtable=function(x,digits=4){
+    suppressMessages(a<-confint(x))
+    result=data.frame(exp(coef(x)),exp(a))
+    result=round(result,digits)
+    result=cbind(result,round(summary(x)$coefficient[,4],3))
+    colnames(result)=c("OR","2.5%","97.5%","p")
+    result
+}
+
+feature_qual = as.formula(paste(ResVar, "~shape_R2+margin_R2+T2dark_R2+
+                     necrosis_R2"))
+logistic_qual = glm(feature_qual, data = data, family = binomial)
+#summary(logistic_qual)
+#ORtable(logistic_qual)
+ORplot(logistic_qual,type=2,show.OR=TRUE,show.CI=TRUE,
+       main="Odds Ratios of LMS from MRI Features ") 
+```
+
+
+## 1-3. ROC curve for LR model with qualitative features
+
+
+```{r, message=FALSE, echo=FALSE}
+
+Log_odds=predict(logistic_qual, newdata= data)
+Prob = predict(logistic_qual, newdata= data, type='response')
+
+PREDICTED_C = ifelse(Prob > 0.338 , 1 , 0)
+PREDICTED_C = factor(PREDICTED_C,levels = c(0,1))
+data$malignancy = factor(data$malignancy, levels = c(0,1))
+#confusionMatrix(PREDICTED_C,data$malignancy)
+ROC = roc(data$malignancy, Prob)
+plot.roc(ROC, col="red", print.auc=TRUE, print.auc.adj=c(1.11,1.2),
+         print.thres=TRUE, print.thres.adj=c(0.3,-1.0), legacy.axes = TRUE)
+```
+
+
+## 1-4. ROC curve using ADC only
+
+
+```{r, message=FALSE, echo=FALSE}
+
+ROC_adc = roc(data$malignancy, data$ADC_R2)
+plot.roc(ROC_adc, col="red", print.auc=TRUE, print.auc.adj=c(1.11,1.2),
+         print.thres=TRUE, print.thres.adj=c(0.3,-1.0), legacy.axes = TRUE)
+```
+
+
+## 1-5. ROC curve for RCR only
+
+
+```{r, message=FALSE, echo=FALSE}
+
+ROC_rcr = roc(data$malignancy, data$RCR_R2)
+plot.roc(ROC_rcr, col="red", print.auc=TRUE, print.auc.adj=c(1.11,1.2),
+         print.thres=TRUE, print.thres.adj=c(0.3,-1.0), legacy.axes = TRUE)
+```
+
+
+## 1-6. ROC curve of LR model: qualitative features + ADC
+
+
+```{r, message=FALSE, echo=FALSE}
+feature_adc = as.formula(paste(ResVar, "~shape_R2+margin_R2+T2dark_R2+
+                     necrosis_R2+ADC_R2"))
+logistic_adc = glm(feature_adc, data = data, family = binomial)
+Log_odds=predict(logistic_adc, newdata= data)
+Prob = predict(logistic_adc, newdata= data, type='response')
+
+PREDICTED_C = ifelse(Prob > 0.5 , 1 , 0)
+PREDICTED_C = factor(PREDICTED_C,levels = c(0,1))
+#confusionMatrix(PREDICTED_C,data$malignancy)
+ROC_ADC = roc(data$malignancy, Prob)
+plot.roc(ROC_ADC, col="red", print.auc=TRUE, print.auc.adj=c(1.11,1.2),
+         print.thres=TRUE, print.thres.adj=c(0.3,-1.0), legacy.axes = TRUE)
+```
+
+
+## 1-7. ROC curve of LR model: qualitative features + RCR
+
+
+```{r, message=FALSE, echo=FALSE}
+feature_rcr = as.formula(paste(ResVar, "~shape_R2+margin_R2+T2dark_R2+
+                     necrosis_R2+RCR_R2"))
+logistic_rcr = glm(feature_rcr, data = data, family = binomial)
+Log_odds=predict(logistic_rcr, newdata= data)
+Prob = predict(logistic_rcr, newdata= data, type='response')
+
+PREDICTED_C = ifelse(Prob > 0.5 , 1 , 0)
+PREDICTED_C = factor(PREDICTED_C,levels = c(0,1))
+#confusionMatrix(PREDICTED_C,data$malignancy)
+ROC_RCR = roc(data$malignancy, Prob)
+plot.roc(ROC_RCR, col="red", print.auc=TRUE, print.auc.adj=c(1.11,1.2),
+         print.thres=TRUE, print.thres.adj=c(0.3,1.0), legacy.axes = TRUE)
+```
+
+
+## 1-8. Comparison of ROC: qualitative features vs. qualitative features + RCR
+
+
+```{r}
+roc.test(ROC,ROC_RCR)
+```
+
+
+## 1-9. Comparison of ROC: qualitative features + ADC vs. qualitative features + RCR
+
+
+```{r}
+roc.test(ROC_ADC,ROC_RCR)
+```
+
+
+***   
+   
+   
+# 2. result for K
+
+
+## 2-1. cross table analysis
+
+
+```{r, echo=FALSE}
+ResVar = "malignancy"
+Model = as.formula(paste(ResVar, "~shape_K+margin_K+hemorrhage_K+T2dark_K+
+                     necrosis_K+ADC_K+RCR_K"))
+
+## cross table analysis
+table <- mytable(Model,data=data, show.total=TRUE)
+table
+```
+
+
+## 2-2. logistic regression model with OR calculation for qualitative features
+
+
+```{r, echo=FALSE}
+ORtable=function(x,digits=4){
+    suppressMessages(a<-confint(x))
+    result=data.frame(exp(coef(x)),exp(a))
+    result=round(result,digits)
+    result=cbind(result,round(summary(x)$coefficient[,4],3))
+    colnames(result)=c("OR","2.5%","97.5%","p")
+    result
+}
+
+feature_qual = as.formula(paste(ResVar, "~shape_K+margin_K+T2dark_K+
+                     necrosis_K"))
+logistic_qual = glm(feature_qual, data = data, family = binomial)
+#summary(logistic_qual)
+#ORtable(logistic_qual)
+ORplot(logistic_qual,type=2,show.OR=TRUE,show.CI=TRUE,
+       main="Odds Ratios of Qualitative Features") 
+```
+
+
+## 2-3. ROC curve for LR model with qualitative features
+
+
+```{r, message=FALSE, echo=FALSE}
+
+Log_odds=predict(logistic_qual, newdata= data)
+Prob = predict(logistic_qual, newdata= data, type='response')
+
+PREDICTED_C = ifelse(Prob > 0.5 , 1 , 0)
+PREDICTED_C = factor(PREDICTED_C,levels = c(0,1))
+data$malignancy = factor(data$malignancy, levels = c(0,1))
+#confusionMatrix(PREDICTED_C,data$malignancy)
+ROC = roc(data$malignancy, Prob)
+plot.roc(ROC, col="red", print.auc=TRUE, print.auc.adj=c(1.11,1.2),
+         print.thres=TRUE, print.thres.adj=c(0.3,-1.0), legacy.axes = TRUE)
+```
+
+
+## 2-4. ROC curve using ADC only
+
+
+```{r, message=FALSE, echo=FALSE}
+
+ROC_adc = roc(data$malignancy, data$ADC_K)
+plot.roc(ROC_adc, col="red", print.auc=TRUE, print.auc.adj=c(1.11,1.2),
+         print.thres=TRUE, print.thres.adj=c(0.3,-1.0), legacy.axes = TRUE)
+```
+
+
+## 2-5. ROC curve for RCR only
+
+
+```{r, message=FALSE, echo=FALSE}
+
+ROC_rcr = roc(data$malignancy, data$RCR_K)
+plot.roc(ROC_rcr, col="red", print.auc=TRUE, print.auc.adj=c(1.11,1.2),
+         print.thres=TRUE, print.thres.adj=c(0.3,-1.0), legacy.axes = TRUE)
+```
+
+
+## 2-6. ROC curve of LR model: qualitative features + ADC
+
+
+```{r, message=FALSE, echo=FALSE}
+feature_adc = as.formula(paste(ResVar, "~shape_K+margin_K+T2dark_K+
+                     necrosis_K+ADC_K"))
+logistic_adc = glm(feature_adc, data = data, family = binomial)
+Log_odds=predict(logistic_adc, newdata= data)
+Prob = predict(logistic_adc, newdata= data, type='response')
+
+PREDICTED_C = ifelse(Prob > 0.5 , 1 , 0)
+PREDICTED_C = factor(PREDICTED_C,levels = c(0,1))
+#confusionMatrix(PREDICTED_C,data$malignancy)
+ROC_ADC = roc(data$malignancy, Prob)
+plot.roc(ROC_ADC, col="red", print.auc=TRUE, print.auc.adj=c(1.11,1.2),
+         print.thres=TRUE, print.thres.adj=c(0.3,-1.0), legacy.axes = TRUE)
+```
+
+
+## 2-7. ROC curve of LR model: qualitative features + RCR
+
+
+```{r, message=FALSE, echo=FALSE}
+feature_rcr = as.formula(paste(ResVar, "~shape_K+margin_K+T2dark_K+
+                     necrosis_K+RCR_K"))
+logistic_rcr = glm(feature_rcr, data = data, family = binomial)
+Log_odds=predict(logistic_rcr, newdata= data)
+Prob = predict(logistic_rcr, newdata= data, type='response')
+
+PREDICTED_C = ifelse(Prob > 0.5 , 1 , 0)
+PREDICTED_C = factor(PREDICTED_C,levels = c(0,1))
+#confusionMatrix(PREDICTED_C,data$malignancy)
+ROC_RCR = roc(data$malignancy, Prob)
+plot.roc(ROC_RCR, col="red", print.auc=TRUE, print.auc.adj=c(1.11,1.2),
+         print.thres=TRUE, print.thres.adj=c(0.3,-1.0), legacy.axes = TRUE)
+```
+
+
+## 2-8. Comparison of ROC: qualitative features vs. qualitative features + RCR
+
+
+```{r}
+roc.test(ROC,ROC_RCR)
+```
+
+
+## 2-9. Comparison of ROC: qualitative features + ADC vs. qualitative features + RCR
+
+
+```{r}
+roc.test(ROC_ADC,ROC_RCR)
+```
