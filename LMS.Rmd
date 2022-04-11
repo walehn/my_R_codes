@@ -27,7 +27,7 @@ Model = as.formula(paste(ResVar, "~shape_R2+margin_R2+hemorrhage_R2+T2dark_R2+
 
 
 ```{r, echo=FALSE}
-table <- mytable(Model,data=data, show.total=TRUE)
+table <- mytable(Model,data=data, digits= 3, show.total=TRUE)
 table
 ```
 
@@ -45,7 +45,7 @@ ORtable=function(x,digits=4){
     result
 }
 
-feature_qual = as.formula(paste(ResVar, "~shape_R2+margin_R2+T2dark_R2+
+feature_qual = as.formula(paste(ResVar, "~shape_R2+margin_R2+T2dark_R2+hemorrhage_R2+
                      necrosis_R2"))
 logistic_qual = glm(feature_qual, data = data, family = binomial)
 #summary(logistic_qual)
@@ -60,6 +60,8 @@ ORplot(logistic_qual,type=2,show.OR=TRUE,show.CI=TRUE,
 
 ```{r, message=FALSE, echo=FALSE}
 
+feature_qual = as.formula(paste(ResVar, "~shape_R2+T2dark_R2+necrosis_R2"))
+logistic_qual = glm(feature_qual, data = data, family = binomial)
 Log_odds=predict(logistic_qual, newdata= data)
 Prob = predict(logistic_qual, newdata= data, type='response')
 
@@ -68,9 +70,47 @@ PREDICTED_C = factor(PREDICTED_C,levels = c(0,1))
 data$malignancy = factor(data$malignancy, levels = c(0,1))
 #confusionMatrix(PREDICTED_C,data$malignancy)
 ROC = roc(data$malignancy, Prob)
-plot.roc(ROC, col="red", print.auc=TRUE, print.auc.adj=c(1.11,1.2),
-         print.thres=TRUE, print.thres.adj=c(0.3,-1.0), legacy.axes = TRUE)
+#plot.roc(ROC, col="red", print.auc=TRUE, print.auc.adj=c(1.11,1.2),
+#         print.thres=TRUE, print.thres.adj=c(0.3,-1.0), legacy.axes = TRUE)
+
+
+feature_adc = as.formula(paste(ResVar, "~shape_R2+T2dark_R2+necrosis_R2+ADC_R2"))
+logistic_adc = glm(feature_adc, data = data, family = binomial)
+Prob2 = predict(logistic_adc, newdata= data, type='response')
+ROC_ADC = roc(data$malignancy, Prob2)
+
+
+feature_rcr = as.formula(paste(ResVar, "~shape_R2+T2dark_R2+necrosis_R2+RCR_R2"))
+logistic_rcr = glm(feature_rcr, data = data, family = binomial)
+Prob3 = predict(logistic_rcr, newdata= data, type='response')
+ROC_RCR = roc(data$malignancy, Prob3)
+
+
+library(ggplot2)
+#roc.list <- roc(malignancy ~ shape_R2+ADC_R2+RCR_R2, data=data)
+#roc.list[1] <- ROC
+
+ROC.list <- list(ROC,ROC_ADC,ROC_RCR)
+ll = round(sapply(ROC.list, auc), 3)
+ll = paste("AUC of", c("qualitative only","qualitative + ADC","qualitative + RCR"), "=", ll)
+
+g.list <- ggroc(ROC.list, aes=c("color"), legacy.axes = TRUE)+
+    geom_line(size = 1, alpha = 0.7)+ theme_bw() +
+    theme(legend.justification="bottom",legend.position="right",panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))+
+    scale_color_manual(name="Reader 1", labels=c("qualitative only","qualitative + ADC","qualitative + RCR"),values=c("red","black","blue"))+
+    annotate("text", x=0.75, y=0.15, label=ll[1], col='red') + 
+    annotate("text", x=0.75, y=0.1, label=ll[2], col='black') + 
+    annotate("text", x=0.75, y=0.05, label=ll[3], col='blue')
+g.list 
+
+#ggsave("reader1.tiff", plot = print(g.list), dpi=200, dev='tiff', height=8.27/1.5, width=11.69/1.5, units="in")
+
 ```
+
+```{r, message=FALSE, echo=FALSE}
+ci.auc(ROC_RCR)
+```
+
 
 
 ## 1-4. ROC curve using ADC only
@@ -137,7 +177,7 @@ plot.roc(ROC_RCR, col="red", print.auc=TRUE, print.auc.adj=c(1.11,1.2),
 
 
 ```{r}
-roc.test(ROC,ROC_RCR)
+roc.test(ROC,ROC_ADC)
 ```
 
 
@@ -197,16 +237,47 @@ ORplot(logistic_qual,type=2,show.OR=TRUE,show.CI=TRUE,
 
 ```{r, message=FALSE, echo=FALSE}
 
+feature_qual = as.formula(paste(ResVar, "~shape_K+T2dark_K+necrosis_K"))
+logistic_qual = glm(feature_qual, data = data, family = binomial)
 Log_odds=predict(logistic_qual, newdata= data)
 Prob = predict(logistic_qual, newdata= data, type='response')
 
-PREDICTED_C = ifelse(Prob > 0.5 , 1 , 0)
+PREDICTED_C = ifelse(Prob > 0.338 , 1 , 0)
 PREDICTED_C = factor(PREDICTED_C,levels = c(0,1))
 data$malignancy = factor(data$malignancy, levels = c(0,1))
 #confusionMatrix(PREDICTED_C,data$malignancy)
 ROC = roc(data$malignancy, Prob)
-plot.roc(ROC, col="red", print.auc=TRUE, print.auc.adj=c(1.11,1.2),
-         print.thres=TRUE, print.thres.adj=c(0.3,-1.0), legacy.axes = TRUE)
+#plot.roc(ROC, col="red", print.auc=TRUE, print.auc.adj=c(1.11,1.2),
+#         print.thres=TRUE, print.thres.adj=c(0.3,-1.0), legacy.axes = TRUE)
+
+
+feature_adc = as.formula(paste(ResVar, "~shape_K+T2dark_K+necrosis_K+ADC_K"))
+logistic_adc = glm(feature_adc, data = data, family = binomial)
+Prob2 = predict(logistic_adc, newdata= data, type='response')
+ROC_ADC = roc(data$malignancy, Prob2)
+
+
+feature_rcr = as.formula(paste(ResVar, "~shape_K+T2dark_K+necrosis_K+ADC_K+RCR_K"))
+logistic_rcr = glm(feature_rcr, data = data, family = binomial)
+Prob3 = predict(logistic_rcr, newdata= data, type='response')
+ROC_RCR = roc(data$malignancy, Prob3)
+
+
+
+ROC.list <- list(ROC,ROC_ADC,ROC_RCR)
+ll = round(sapply(ROC.list, auc), 3)
+ll = paste("AUC of", c("qualitative only","qualitative + ADC","qualitative + RCR"), "=", ll)
+
+g.list <- ggroc(ROC.list, aes=c("color"), legacy.axes = TRUE)+
+    geom_line(size = 1, alpha = 0.7)+ theme_bw() +
+    theme(legend.justification="bottom",legend.position="right",panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))+
+    scale_color_manual(name="Reader 2", labels=c("qualitative only","qualitative + ADC","qualitative + RCR"),values=c("red","black","blue"))+
+    annotate("text", x=0.75, y=0.15, label=ll[1], col='red') + 
+    annotate("text", x=0.75, y=0.1, label=ll[2], col='black') + 
+    annotate("text", x=0.75, y=0.05, label=ll[3], col='blue')
+g.list 
+
+#ggsave("reader2.tiff", plot = print(g.list), dpi=200, dev='tiff', height=8.27/1.5, width=11.69/1.5, units="in")
 ```
 
 
@@ -274,7 +345,7 @@ plot.roc(ROC_RCR, col="red", print.auc=TRUE, print.auc.adj=c(1.11,1.2),
 
 
 ```{r}
-roc.test(ROC,ROC_RCR)
+roc.test(ROC,ROC_ADC)
 ```
 
 
@@ -284,3 +355,9 @@ roc.test(ROC,ROC_RCR)
 ```{r}
 roc.test(ROC_ADC,ROC_RCR)
 ```
+
+```{r}
+ci.auc(ROC)
+```
+
+
